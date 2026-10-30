@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Геометричний Хелловін: Паралельні прямі та січна</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #12081f;
+            background-image: radial-gradient(#26123b 15%, transparent 16%);
+            background-size: 24px 24px;
+            color: #f3e5f5;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            background: #1e102e;
+            border: 4px solid #ff7518;
+            padding: 25px;
+            max-width: 650px;
+            margin: 20px auto;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(255, 117, 24, 0.3);
+        }
+        input, button, select {
+            font-family: inherit;
+            font-size: 16px;
+            padding: 10px;
+            margin: 8px;
+            border-radius: 6px;
+            border: none;
+        }
+        input[type="number"], input[type="text"] {
+            background: #0f0518;
+            color: #ff9e3b;
+            font-weight: bold;
+            border: 2px solid #7b1fa2;
+            width: 80%;
+            max-width: 300px;
+            text-align: center;
+        }
+        button {
+            font-family: 'Courier New', monospace;
+            background-color: #ff7518;
+            color: #12081f;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            border: 2px solid #e65100;
+        }
+        button:hover { background-color: #ff914d; transform: scale(1.02); }
+        .secondary-btn { background-color: #8e24aa; border-color: #6a1b9a; color: #fff; display: none; margin-top: 20px; width: 100%; max-width: 320px; }
+        .secondary-btn:hover { background-color: #9c27b0; }
+        .next-btn { background-color: #00acc1; border-color: #00838f; color: #fff; display: none; margin-top: 15px; width: 100%; max-width: 320px; }
+        .next-btn:hover { background-color: #00bcd4; }
+        .hidden { display: none; }
+        .hud {
+            display: flex;
+            justify-content: space-around;
+            background: #0f0518;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            border: 2px solid #7b1fa2;
+        }
+        .svg-container { margin: 15px 0; background: #0f0518; padding: 10px; border-radius: 8px; border: 2px dashed #7b1fa2; display: inline-block; }
+        #feedback { font-weight: bold; font-size: 18px; margin: 15px 0; }
+        .success { color: #69f0ae; text-shadow: 0 0 8px rgba(105,240,174,0.5); }
+        .error { color: #ff5252; text-shadow: 0 0 8px rgba(255,82,82,0.5); }
+        h2, h3 { color: #ff9e3b; text-shadow: 2px 2px #000; }
+    </style>
+</head>
+<body>
+
+    <!-- ФОРМА РЕЄСТРАЦІЇ -->
+    <div id="registration-screen" class="card">
+        <h2>🎃 ГЕОМЕТРИЧНИЙ ХЕЛЛОВІН 🦇</h2>
+        <p>Паралельні прямі та січна. Введіть свої дані:</p>
+        <input type="text" id="reg-name" placeholder="Прізвище та Ім'я" required><br>
+        <input type="text" id="reg-class" placeholder="Клас (наприклад, 7-А)" required><br>
+        <br>
+        <button onclick="startSession()">Почати пригоду! 🧙‍♂️</button>
+    </div>
+
+    <!-- ОСНОВНИЙ ІНТЕРФЕЙС ГРИ -->
+    <div id="game-screen" class="card hidden">
+        <div class="hud">
+            <div>👤 <span id="user-display" style="color: #ff9e3b;"></span></div>
+            <div>✨ XP: <span id="xp-val" style="color: #69f0ae;">0</span></div>
+            <div>🧪 Зілля: <span id="diamonds-val" style="color: #00bcd4;">0</span></div>
+            <div>🏆 Рівень: <span id="level-val" style="color: #ffb300;">1</span></div>
+        </div>
+
+        <h3 id="task-title">Завантаження...</h3>
+        <div class="svg-container" id="svg-box"></div>
+        <p id="task-desc" style="font-size: 17px; line-height: 1.4;">Завантаження...</p>
+        
+        <div id="question-box">
+            <input type="number" id="answer-input" placeholder="Введіть число (°)...">
+            <br>
+            <button id="check-btn" onclick="checkAnswer()">ПЕРЕВІРИТИ 🔮</button>
+            <br>
+            <button id="next-btn" class="next-btn" onclick="nextTask()">НАСТУПНЕ ЗАВДАННЯ ➡️</button>
+        </div>
+
+        <p id="feedback"></p>
+        
+        <button id="send-btn" class="secondary-btn" onclick="sendDataToGoogleSheets()">📊 Надіслати результати в табель</button>
+    </div>
+
+    <script>
+        // Вставте сюди актуальний URL вашої веб-програми Google Apps Script (якщо є)
+        const GOOGLE_SCRIPT_URL = ""; 
+
+        let userData = { name: "", class: "", xp: 0, diamonds: 0, level: 1, currentTaskIndex: 0 };
+        let answeredCurrent = false;
+
+        // 10 завдань на тему "Паралельні прямі та січна" у стилі Хелловін
+        const tasks = [
+            {
+                title: "Завдання 1: Відповідні кути",
+                desc: "Прямі a і b паралельні, c — січна. Один із відповідних кутів дорівнює 70°. Знайдіть градусну міру другого кута.",
+                answer: 70,
+                svg: `<svg width="180" height="120" viewBox="0 0 180 120"><line x1="10" y1="40" x2="170" y2="40" stroke="#ff7518" stroke-width="3"/><line x1="10" y1="80" x2="170" y2="80" stroke="#ff7518" stroke-width="3"/><line x1="40" y1="10" x2="140" y2="110" stroke="#00bcd4" stroke-width="3"/><text x="15" y="35" fill="#ff7518" font-size="14">a</text><text x="15" y="75" fill="#ff7518" font-size="14">b</text><text x="135" y="20" fill="#00bcd4" font-size="14">c</text><text x="65" y="45" fill="#69f0ae" font-size="12">70°</text></svg>`
+            },
+            {
+                title: "Завдання 2: Внутрішні різносторонні кути",
+                desc: "Паралельні прямі перетинаються січною. Один із внутрішніх різносторонніх кутів дорівнює 110°. Знайдіть інший кут.",
+                answer: 110,
+                svg: `<svg width="180" height="120" viewBox="0 0 180 120"><line x1="10" y1="40" x2="170" y2="40" stroke="#ff7518" stroke-width="3"/><line x1="10" y1="80" x2="170" y2="80" stroke="#ff7518" stroke-width="3"/><line x1="40" y1="10" x2="140" y2="110" stroke="#00bcd4" stroke-width="3"/><text x="95" y="75" fill="#69f0ae" font-size="12">110°</text></svg>`
+            },
+            {
+                title: "Завдання 3: Суміжні кути при січній",
+                desc: "Один із кутів, утворених при перетині паралельних прямих січною, дорівнює 50°. Знайдіть суміжний з ним кут.",
+                answer: 130,
+                svg: `<svg width="180" height="120" viewBox="0 0 180 120"><line x1="10" y1="40" x2="170" y2="40" stroke="#ff7518" stroke-width="3"/><line x1="10" y1="80" x2="170" y2="80" stroke="#ff7518" stroke-width="3"/><line x1="40" y1="10" x2="140" y2="110" stroke="#00bcd4" stroke-width="3"/><text x="45" y="35" fill="#69f0ae" font-size="12">50°</text></svg>`
+            },
+            {
+                title: "Завдання 4: Внутрішні односторонні кути",
+                desc: "Один із внутрішніх односторонніх кутів дорівнює 65°. Знайдіть інший внутрішній односторонній кут.",
+                answer: 115,
+                svg: `<svg width="180" height="120" viewBox="0 0 180 120"><line x1="10" y1="40" x2="170" y2="40" stroke="#ff7518" stroke-width="3"/><line x1="10" y1="80" x2="170" y2="80" stroke="#ff7518" stroke-width="3"/><line x1="40" y1="10" x2="140" y2="110" stroke="#00bcd4" stroke-width="3"/><text x="55" y="55" fill="#69f0ae" font-size="12">65°</text></svg>`
+            },
+            {
+                title: "Завдання 5: Вертикальні кути",
+                desc: "При перетині прямих утворився кут 124°. Знайдіть вертикальний йому кут.",
+                answer: 124,
+                svg: `<svg width="150" height="120" viewBox="0 0 150 120"><line x1="10" y1="20" x2="140" y2="100" stroke="#ff7518" stroke-width="3"/><line x1="10" y1="100" x2="140" y2="20" stroke="#ff7518" stroke-width="3"/><text x="65" y="45" fill="#69f0ae" font-size="12">124°</text></svg>`
+            },
+            {
+                title: "Завдання 6: Внутрішні різносторонні кути",
+                desc: "Один із різносторонніх кутів дорівнює (3x)°, а інший 120°. Знайдіть x.",
+                answer: 40,
+                svg: `<svg width="180" height="120" viewBox="0 0 180 120"><line x1="10" y1="40" x2="170" y2="40" stroke="#ff7518" stroke-width="3"/><line x1="10" y1="80" x2="170" y2="80" stroke="#ff7518" stroke-width="3"/><line x1="40" y1="10" x2="140" y2="110" stroke="#00bcd4" stroke-width="3"/><text x="80" y="35" fill="#69f0ae" font-size="12">3x</text></svg>`
+            },
+            {
+                title: "Завдання 7: Односторонні кути рівняння",
+                desc: "Один з односторонніх кутів у 2 рази більший за інший. Знайдіть менший із цих кутів (°).",
+                answer: 60,
+                svg: `<svg width="180" height="120" viewBox="0 0 180 120"><line x1="10" y1="40" x2="170" y2="40" stroke="#ff7518" stroke-width="3"/><line x1="10" y1="80" x2="170" y2="80" stroke="#ff7518" stroke-width="3"/><line x1="40" y1="10" x2="140" y2="110" stroke="#00bcd4" stroke-width="3"/><text x="60" y="55" fill="#69f0ae" font-size="12">x / 2x</text></svg>`
+            },
+            {
+                title: "Завдання 8: Зовнішні різносторонні",
+                desc: "Зовнішній різносторонній кут дорівнює 82°. Знайдіть другий кут.",
+                answer: 82,
+                svg: `<svg width="180" height="120" viewBox="0 0 180 120"><line x1="10" y1="40" x2="170" y2="40" stroke="#ff7518" stroke-width="3"/><line x1="10" y1="80" x2="170" y2="80" stroke="#ff7518" stroke-width="3"/><line x1="40" y1="10" x2="140" y2="110" stroke="#00bcd4" stroke-width="3"/><text x="35" y="25" fill="#69f0ae" font-size="12">82°</text></svg>`
+            },
+            {
+                title: "Завдання 9: Кути при січній",
+                desc: "Сума двох відповідних кутів дорівнює 160°. Знайдіть один із цих кутів.",
+                answer: 80,
+                svg: `<svg width="180" height="120" viewBox="0 0 180 120"><line x1="10" y1="40" x2="170" y2="40" stroke="#ff7518" stroke-width="3"/><line x1="10" y1="80" x2="170" y2="80" stroke="#ff7518" stroke-width="3"/><line x1="40" y1="10" x2="140" y2="110" stroke="#00bcd4" stroke-width="3"/><text x="65" y="45" fill="#69f0ae" font-size="12">?</text></svg>`
+            },
+            {
+                title: "Завдання 10: Складний кут",
+                desc: "Один із внутрішніх односторонніх кутів дорівнює 47°. Знайдіть суміжний з другим одностороннім кутом.",
+                answer: 47,
+                svg: `<svg width="180" height="120" viewBox="0 0 180 120"><line x1="10" y1="40" x2="170" y2="40" stroke="#ff7518" stroke-width="3"/><line x1="10" y1="80" x2="170" y2="80" stroke="#ff7518" stroke-width="3"/><line x1="40" y1="10" x2="140" y2="110" stroke="#00bcd4" stroke-width="3"/><text x="50" y="55" fill="#69f0ae" font-size="12">47°</text></svg>`
+            }
+        ];
+
+        function startSession() {
+            const nameInput = document.getElementById('reg-name').value.trim();
+            const classInput = document.getElementById('reg-class').value.trim();
+            if (!nameInput || !classInput) {
+                alert("Будь ласка, введіть прізвище, ім'я та клас!");
+                return;
+            }
+            userData.name = nameInput;
+            userData.class = classInput;
+            
+            document.getElementById('registration-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            document.getElementById('user-display').innerText = `${userData.name} (${userData.class})`;
+            loadTask();
+        }
+
+        function loadTask() {
+            answeredCurrent = false;
+            let current = tasks[userData.currentTaskIndex];
+            document.getElementById('task-title').innerText = current.title;
+            document.getElementById('svg-box').innerHTML = current.svg;
+            document.getElementById('task-desc').innerText = current.desc;
+            document.getElementById('answer-input').value = "";
+            document.getElementById('feedback').innerText = "";
+            document.getElementById('check-btn').style.display = "inline-block";
+            document.getElementById('next-btn').style.display = "none";
+        }
+
+        function checkAnswer() {
+            if (answeredCurrent) return;
+            let userAns = parseFloat(document.getElementById('answer-input').value);
+            let current = tasks[userData.currentTaskIndex];
+            let fb = document.getElementById('feedback');
+
+            if (isNaN(userAns)) {
+                fb.className = "error";
+                fb.innerText = "⚠️ Введіть числове значення!";
+                return;
+            }
+
+            answeredCurrent = true;
+            if (userAns === current.answer) {
+                fb.className = "success";
+                fb.innerText = "🦇 Чудово! Магічне зілля зараховано! +50 XP";
+                userData.xp += 50;
+                userData.diamonds += 1;
+                userData.level = Math.floor(userData.xp / 100) + 1;
+                updateHUD();
+            } else {
+                fb.className = "error";
+                fb.innerText = `❌ Помилка! Правильна відповідь: ${current.answer}`;
+            }
+
+            document.getElementById('check-btn').style.display = "none";
+            if (userData.currentTaskIndex < tasks.length - 1) {
+                document.getElementById('next-btn').style.display = "inline-block";
+            } else {
+                fb.innerText += " 🎉 Ви пройшли всі завдання Хелловіну!";
+                document.getElementById('send-btn').style.display = "inline-block";
+            }
+        }
+
+        function nextTask() {
+            userData.currentTaskIndex++;
+            loadTask();
+        }
+
+        function updateHUD() {
+            document.getElementById('xp-val').innerText = userData.xp;
+            document.getElementById('diamonds-val').innerText = userData.diamonds;
+            document.getElementById('level-val').innerText = userData.level;
+        }
+
+        function sendDataToGoogleSheets() {
+            if (!GOOGLE_SCRIPT_URL) {
+                alert("Результати готові! (URL Google Таблиці не налаштовано в коді). Ваш загальний рахунок: " + userData.xp + " XP");
+                return;
+            }
+            
+            let data = {
+                name: userData.name,
+                class: userData.class,
+                xp: userData.xp,
+                diamonds: userData.diamonds,
+                level: userData.level,
+                tasksCompleted: `${userData.currentTaskIndex + 1} / ${tasks.length}`
+            };
+
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            }).then(() => {
+                alert("✅ Результати успішно надіслано до таблиці!");
+                document.getElementById('send-btn').disabled = true;
+                document.getElementById('send-btn').innerText = "Надіслано ✔️";
+            }).catch(err => {
+                alert("Помилка надсилання: " + err);
+            });
+        }
+    </script>
+</body>
+</html>
