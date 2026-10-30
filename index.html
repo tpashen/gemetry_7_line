@@ -111,11 +111,60 @@
     </div>
 
     <script>
-        // Вставте сюди актуальний URL вашої веб-програми Google Apps Script (якщо є)
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxhb_kSuljQ3z_jjI6X9mIgBJ59DOm7MGijVMCXw7GugRzEl6IumiIpfe1EzqkTijHj/exec"; 
+        // Вставте сюди актуальний URL вашої веб-програми Google Apps Script
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyIKYgmgoml0AmrYVOWY2c3CjmRU7Agq-m_YDvsgGFyg4w5pEMUlbStSHKFgYXZECXx4w/exec"; 
 
         let userData = { name: "", class: "", xp: 0, diamonds: 0, level: 1, currentTaskIndex: 0 };
         let answeredCurrent = false;
+        let audioCtx = null;
+
+        // Генератор моторошних звуків (Web Audio API)
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSpookySound(type) {
+            initAudio();
+            if (!audioCtx) return;
+
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            let now = audioCtx.currentTime;
+
+            if (type === 'start') {
+                // Містичний гул привида
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 1.2);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 1.2);
+                osc.start(now);
+                osc.stop(now + 1.2);
+            } else if (type === 'success') {
+                // Магічний дзенькіт зілля
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.4);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (type === 'error') {
+                // Моторошний низький стогін помилки
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.linearRampToValueAtTime(50, now + 0.6);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+                osc.start(now);
+                osc.stop(now + 0.6);
+            }
+        }
 
         // 10 завдань на тему "Паралельні прямі та січна" у стилі Хелловін
         const tasks = [
@@ -191,6 +240,8 @@
             userData.name = nameInput;
             userData.class = classInput;
             
+            playSpookySound('start');
+
             document.getElementById('registration-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
             document.getElementById('user-display').innerText = `${userData.name} (${userData.class})`;
@@ -223,6 +274,7 @@
 
             answeredCurrent = true;
             if (userAns === current.answer) {
+                playSpookySound('success');
                 fb.className = "success";
                 fb.innerText = "🦇 Чудово! Магічне зілля зараховано! +50 XP";
                 userData.xp += 50;
@@ -230,6 +282,7 @@
                 userData.level = Math.floor(userData.xp / 100) + 1;
                 updateHUD();
             } else {
+                playSpookySound('error');
                 fb.className = "error";
                 fb.innerText = `❌ Помилка! Правильна відповідь: ${current.answer}`;
             }
@@ -256,7 +309,7 @@
 
         function sendDataToGoogleSheets() {
             if (!GOOGLE_SCRIPT_URL) {
-                alert("Результати готові! (URL Google Таблиці не налаштовано в коді). Ваш загальний рахунок: " + userData.xp + " XP");
+                alert("Результати готові! Ваш загальний рахунок: " + userData.xp + " XP");
                 return;
             }
             
